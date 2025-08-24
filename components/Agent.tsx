@@ -55,6 +55,7 @@ const Agent = ({userName, userId, type} : AgentProps) => {
     vapi.on('speech-end', onSpeechEnd);
     vapi.on('error', onError);
 
+    // When component unmounts, clean up the event listeners
     return () => {
       vapi.off('call-start', onCallStart);
       vapi.off('call-end', onCallEnd);
@@ -65,27 +66,28 @@ const Agent = ({userName, userId, type} : AgentProps) => {
     }
   },[]);
 
+  // Whenever messages or callStatus changes, check if call has finished
   useEffect(() => {
     if(callStatus === CallStatus.FINISHED)
-        router.push('/interviews/id'); // Redirect to the interview details page after the call ends
+        router.push('/'); // Redirect to the home page after the call ends
   },[messages, callStatus, type, userId]);
 
 
-    const handleCall = async () => {
-      setCallStatus(CallStatus.CONNECTING);
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {variableValues:{
-        username: userName ?? '',
-        userid: userId ?? '',
-      }});
-    }
+  const handleCall = async () => {
+    setCallStatus(CallStatus.CONNECTING);
+    await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {variableValues:{
+      username: userName ?? '',
+      userid: userId ?? '',
+    }});
+  }
 
-    const handleDisconnect = async () => {
-      setCallStatus(CallStatus.FINISHED);
-      vapi.stop();
-    }
+  const handleDisconnect = async () => {
+    setCallStatus(CallStatus.FINISHED);
+    vapi.stop();
+  }
 
-    const latestMessage = messages[messages.length - 1]?.content;
-    const isCallInactiveOrFinished = callStatus === CallStatus.INACTIVE  ||  callStatus === CallStatus.FINISHED;
+  const latestMessage = messages[messages.length - 1]?.content;
+  const isCallInactiveOrFinished = callStatus === CallStatus.INACTIVE  ||  callStatus === CallStatus.FINISHED;
 
   return (
     <>

@@ -1,12 +1,9 @@
 'use server'
 
-//import { collection, doc, getDoc, setDoc } from "firebase/firestore";
-// import { getFirestore } from "firebase-admin/firestore";
-// import { getAuth } from "firebase-admin/auth";
-import { getAuth, getFirestore } from "../../firebase/admin";
-//import { db } from "firebase/admin";
+import { auth, db } from "../../firebase/admin";
 import { cookies } from "next/headers";
 import { SignUpParams, SignInParams, User } from "types";
+import { redirect } from "next/navigation";
 
 const ONE_WEEK = 60 * 60 *24 * 7;
 
@@ -16,7 +13,7 @@ export async function signUp(params: SignUpParams) {
     console.log("SIGNUP CALLED with:", { uid, email, name });
 
     try {
-        const userRef = getFirestore().collection('users').doc(uid);
+        const userRef = db.collection('users').doc(uid);
         const userRecord = await userRef.get();
 
         if (userRecord.exists) {
@@ -56,10 +53,10 @@ export async function signIn(params: SignInParams){
     const {email,idToken} = params;
 
     try{
-        const decodedToken = await getAuth().verifyIdToken(idToken);
+        const decodedToken = await auth.verifyIdToken(idToken);
         const uid = decodedToken.uid;
 
-        const userRef = getFirestore().collection('users').doc(uid);
+        const userRef = db.collection('users').doc(uid);
         const userRecord = await userRef.get();
         
         if (!userRecord.exists) {
@@ -79,7 +76,7 @@ export async function signIn(params: SignInParams){
 // Set session cookie
 export async function setSessionCookie(idToken: string){
     const cookieStore = await cookies();
-    const sessionCookie = await getAuth().createSessionCookie(idToken, { expiresIn: ONE_WEEK * 1000 });
+    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: ONE_WEEK * 1000 });
     cookieStore.set('session', sessionCookie, {
         maxAge: ONE_WEEK,
         path: '/',
@@ -98,9 +95,9 @@ export async function getCurrentUser(): Promise<User | null> {
         return null;
 
     try{
-        const decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true);
+        const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
         const uid = decodedClaims.uid; 
-        const userRef = getFirestore().collection('users').doc(uid);
+        const userRef = db.collection('users').doc(uid);
         const userRecord = await userRef.get();
         
         if(!userRecord.exists) 
@@ -119,4 +116,15 @@ export async function isAuthenticated(){
     const user = await getCurrentUser();
 
     return !!user;  // Returns true if user is authenticated, false otherwise
+}
+
+// Sign Out function
+export async function signOut() {
+  const cookieStore = await cookies();
+  cookieStore.set("session", "", {
+    path: "/",
+    expires: new Date(0), // expire immediately
+  });
+
+  redirect("/auth/sign-in"); 
 }
